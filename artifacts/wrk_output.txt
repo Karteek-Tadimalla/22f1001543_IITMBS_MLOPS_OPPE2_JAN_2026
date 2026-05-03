@@ -1,0 +1,9 @@
+Running 2m test @ http://34.100.146.251/predict
+  4 threads and 2000 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     1.21s   492.83ms   1.74s    66.67%
+    Req/Sec     6.73      8.92   111.00     90.23%
+  1242 requests in 2.00m, 195.52KB read
+  Socket errors: connect 0, read 8590, write 19857, timeout 1227
+Requests/sec:     10.34
+Transfer/sec:      1.63KB
