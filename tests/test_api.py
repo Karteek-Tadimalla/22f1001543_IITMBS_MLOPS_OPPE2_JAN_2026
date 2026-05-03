@@ -1,12 +1,23 @@
+import os
+import sys
 from fastapi.testclient import TestClient
-from app.main import app
+
+# Ensure repo root is on sys.path so `app` is importable
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from app.main import app  # now this import works
 
 client = TestClient(app)
 
+
 def test_health():
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok"}
+
 
 def test_predict():
     payload = {
@@ -22,10 +33,10 @@ def test_predict():
         "oldpeak": 2.3,
         "slope": 0.0,
         "ca": 0.0,
-        "thal": 1.0
+        "thal": 1.0,
     }
-    response = client.post("/predict", json=payload)
-    assert response.status_code == 200
-    body = response.json()
+    r = client.post("/predict", json=payload)
+    assert r.status_code == 200
+    body = r.json()
     assert "prediction" in body
     assert "probability" in body
