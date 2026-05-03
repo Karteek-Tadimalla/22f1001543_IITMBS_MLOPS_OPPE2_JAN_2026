@@ -34,14 +34,24 @@ mf = MetricFrame(
 by_group = mf.by_group.reset_index()
 by_group.to_csv("artifacts/fairness_by_age_group.csv", index=False)
 
-# Overall group fairness metrics
+# Ensure labels are 0/1 for fairness metrics
+y_true_bin = (y_test == 1).astype(int)
+y_pred_bin = (y_pred == 1).astype(int)
+
 overall = {
     "demographic_parity_difference": demographic_parity_difference(
-        y_true=y_test, y_pred=y_pred, sensitive_features=age_groups
+        y_true=y_true_bin,
+        y_pred=y_pred_bin,
+        sensitive_features=age_groups,
     ),
     "equalized_odds_difference": equalized_odds_difference(
-        y_true=y_test, y_pred=y_pred, sensitive_features=age_groups
-    ),
+        y_true=y_true_bin,
+        y_pred=y_pred_bin,
+        sensitive_features=age_groups,
+        ),
 }
 
 pd.DataFrame([overall]).to_csv("artifacts/fairness_overall.csv", index=False)
+
+
+
