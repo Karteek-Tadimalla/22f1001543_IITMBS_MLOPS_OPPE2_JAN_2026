@@ -1,17 +1,14 @@
-import json
-import time
-import uuid
-
-import joblib
-import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import pandas as pd
+import joblib
+import time
+import json
+import uuid
 
-app = FastAPI(title="Heart Disease Prediction API")
+app = FastAPI()
 
-# Load the trained model pipeline
 model = joblib.load("artifacts/model.joblib")
-
 
 class HeartInput(BaseModel):
     age: float
@@ -28,32 +25,68 @@ class HeartInput(BaseModel):
     ca: float
     thal: float
 
-
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-
 @app.post("/predict")
-def predict(data: HeartInput):
+def predict(inp: HeartInput):
     start = time.time()
+
+    data = inp.model_dump()
+
+    gender = "male" if float(data["sex"]) == 1.0 else "female"
+
+    df = pd.DataFrame([{
+        "age": float(data["age"]),
+        "gender": gender,
+        "cp": float(data["cp"]),
+        "trestbps": float(data["trestbps"]),
+        "chol": float(data["chol"]),
+        "fbs": float(data["fbs"]),
+        "restecg": float(data["restecg"]),
+        "thalach": float(data["thalach"]),
+        "exang": float(data["exang"]),
+        "oldpeak": float(data["oldpeak"]),
+        "slope": float(data["slope"]),
+        "ca": float(data["ca"]),
+        "thal": float(data["thal"]),
+    }])
+
     try:
-        payload = pd.DataFrame([data.dict()])
-        pred = int(model.predict(payload)[0])
-        prob = float(model.predict_proba(payload)[0][1])
+        raw_pred = model.predict(df)[0]
+        prediction = int(raw_pred)
 
-        # Structured JSON log to stdout for Cloud Logging
-        log_entry = {
-            "request_id": str(uuid.uuid4()),
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "input": data.dict(),
-            "prediction": pred,
-            "probability": prob,
-            "latency_ms": round((time.time() - start) * 1000, 2),
-            "model_version": "v1",
-        }
-        print(json.dumps(log_entry), flush=True)
+        proba = model.predict_proba(df)[0]
+        classes = list(model.named_steps["model"].classes_)
 
-        return {"prediction": pred, "probability": prob}
+        if 1 in classes:
+            pos_idx = classes.index(1)
+        elif "1" in classes:
+            pos_idx = classes.index("1")
+        elif "yes" in classes:
+            pos_idx = classes.index("yes")
+        else:
+            pos_idx = 1
+
+        probability = float(proba[pos_idx])
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    log_entry = {
+        "request_id": str(uuid.uuid4()),
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "input": df.to_dict(orient="records")[0],
+        "prediction": prediction,
+        "probability": probability,
+        "latency_ms": round((time.time() - start) * 1000, 2),
+        "model_version": "v6"
+    }
+
+    print(json.dumps(log_entry), flush=True)
+
+    return {
+        "prediction": prediction,
+        "probability": probability
+    }
